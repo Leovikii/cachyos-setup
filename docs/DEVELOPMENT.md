@@ -14,7 +14,7 @@
 | 游戏设置 | 黑武士 5 Pro → Xbox 360 | SDL 对 `37d7:2401` 的分类覆盖；可在未连接时应用 |
 | 系统微调 | 登录界面仅显示主屏 | 仅支持 Plasma Login Manager + KWin Wayland |
 
-不迁移 USB 唤醒/WOL，不做自动硬件调优、游戏效果判定、动态插件框架、ZIP 自更新或无人值守执行。
+不迁移 USB 唤醒/WOL，不做自动硬件调优、游戏效果判定、动态插件框架或无人值守执行。
 
 ## 目录与职责
 
@@ -26,6 +26,7 @@
 - `modules/`：`kde.sh`、`fonts.sh`、`proton.sh`、`controller.sh`、`login-screen.sh`，另用 `gaming.sh` 共享游戏参数逻辑。
 - `assets/kde/`：固定配色与许可证；`assets/steam/`：共享环境解析器、运行时启动器。
 - `tests/`：临时 HOME、假命令和独立 Git 仓库测试。
+- `scripts/package.sh`：从指定提交生成自包含的 `cachyos-setup.sh`，以明文 heredoc 嵌入模块、资源与许可证；运行时写入私有临时目录，退出清理，不下载运行依赖文件。
 
 模块在独立子 Shell 中加载，共用函数不必实现复杂命名空间。保留旧脚本的依赖检查、KDecoration ABI 检查、严格参数解析和错误处理，移除重复入口、菜单与独立备份代码。
 
@@ -58,7 +59,9 @@
 
 ## 版本更新
 
-只在用户选择更新时联网。仅支持本仓库 `origin` 的 Git 克隆、干净工作区、当前分支跟踪 origin 分支。获取远端后展示版本和提交摘要，用户确认后 `git merge --ff-only` 到已经展示的提交；不自动 stash、reset、切换分支或应用配置。验证目标版本及必需文件，更新后退出，用户重新运行。
+只在用户选择更新时联网。单文件发行版使用 curl 或 wget 下载 latest Release 脚本及 `SHA256SUMS`，校验摘要、Shell 语法和版本后预览替换路径；用户确认后原子替换当前脚本，保留文件权限，不应用系统配置。校验失败、下载失败、符号链接或检查后本地脚本变化时停止。`CACHYOS_SETUP_SCRIPT` 由发行脚本启动入口传给内部模块，用于定位原文件。
+
+源码仓库仍支持本仓库 `origin` 的 Git 克隆、干净工作区、当前分支跟踪 origin 分支。获取远端后展示版本和提交摘要，用户确认后 `git merge --ff-only` 到已经展示的提交；不自动 stash、reset、切换分支或应用配置。验证目标版本及必需文件，更新后退出，用户重新运行。
 
 ## 验证与后续开发
 
@@ -78,6 +81,8 @@ KDE/字体配置测试使用真实 KConfig 工具，缺少时跳过相应测试�
 
 2026-10-31 用户已完成本机迁移并授权清理、推送和首次发行。只读复核确认参数与迁移前备份一致，两个旧文件已移除，新启动器和 KDE 加载入口检查通过；当前没有可读取的 Steam 进程，不宣称游戏效果已验证。临时迁移模块、入口、旧路径状态识别及对应测试已删除，原始用户备份保留。已删除模块的历史快照不再由正式版自动恢复，会显示原始备份位置。
 
-`.github/workflows/release.yml` 在 PR 和 main 推送时，在 Arch 容器安装原生依赖并以普通用户执行完整检查；main 通过后，由 GitHub Actions 从该次提交构建版本化 `.tar.gz` 和 SHA-256 校验文件，校验解压包，再创建对应标签及公开 Release。`VERSION` 是版本来源，同版本已发行时跳过，不能移动已有标签；首次发行不包含本机测试包。源码是 Shell/Python，不生成二进制安装器。
+`.github/workflows/release.yml` 在 PR 和 main 推送时，在 Arch 容器安装原生依赖并以普通用户执行完整检查；纯文档改动（Markdown、`docs/` 和许可证）不触发 workflow。main 通过后，由 GitHub Actions 从该次提交构建单文件 `cachyos-setup.sh` 和 `SHA256SUMS`，检查语法并验证独立运行，再创建对应标签及公开 Release。`VERSION` 是版本来源，同版本已发行时跳过，不能移动已有标签；不发布本机测试产物。源码是 Shell/Python，不生成二进制安装器。README 下载链接固定为 `releases/latest/download/cachyos-setup.sh`。
+
+2026-10-31 按用户要求，删除原压缩包发行版及旧标签后，使用同版本 `v0.1.0` 从改版提交重新发布；这是首次发行格式的调整，后续正式版本遵循已有标签不移动的规则。
 
 2026-10-31 已通过官方发布记录核对唯一第三方 Action：`actions/checkout v7.0.1`（Node 24），固定其完整提交哈希；更新时核对最新稳定版及运行环境要求。运行器使用 `ubuntu-latest`，Arch 容器通过 `pacman -Syu` 获取当前软件包；最小镜像额外安装 `diffutils`，提供配置比较所需的 `cmp`。

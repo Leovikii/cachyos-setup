@@ -3,8 +3,10 @@ name: Check and release
 on:
   push:
     branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**', 'LICENSE', 'assets/**/LICENSE*']
   pull_request:
     branches: [main]
+    paths-ignore: ['**/*.md', 'docs/**', 'LICENSE', 'assets/**/LICENSE*']
   workflow_dispatch:
 
 permissions:
@@ -57,7 +59,7 @@ jobs:
           fi
           bash scripts/package.sh "$RUNNER_TEMP/release" "$GITHUB_SHA"
           gh release create "$tag" \
-            "$RUNNER_TEMP/release/cachyos-setup-$version.tar.gz" \
+            "$RUNNER_TEMP/release/cachyos-setup.sh" \
             "$RUNNER_TEMP/release/SHA256SUMS" \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "$tag" --notes-file "docs/releases/$tag.md" --latest

@@ -1,10 +1,51 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-only
 
+download_release_file() {
+    local url="https://github.com/Leovikii/cachyos-setup/releases/latest/download/$1"
+    if command -v curl >/dev/null 2>&1; then
+        curl --fail --location --silent --show-error --connect-timeout 15 --max-time 120 "$url" -o "$2"
+    else
+        need wget
+        wget --timeout=30 --tries=2 -q "$url" -O "$2"
+    fi
+}
+
+update_release() (
+    ((EUID != 0)) || die '请以桌面普通用户运行'
+    need sha256sum
+    local target=$CACHYOS_SETUP_SCRIPT temporary expected actual version original
+    check_path "$target"
+    [[ -f "$target" && -w "$target" ]] || die '当前脚本不可写，请重新下载最新版'
+    original=$(sha256sum -- "$target")
+    temporary=$(mktemp -d)
+    trap 'rm -rf -- "$temporary"' EXIT
+    printf '正在检查最新发行版…\n'
+    download_release_file cachyos-setup.sh "$temporary/cachyos-setup.sh"
+    download_release_file SHA256SUMS "$temporary/SHA256SUMS"
+    expected=$(awk '$2=="cachyos-setup.sh" {print $1}' "$temporary/SHA256SUMS")
+    [[ "$expected" =~ ^[0-9a-f]{64}$ ]] || die '发行版校验文件无效'
+    actual=$(sha256sum -- "$temporary/cachyos-setup.sh")
+    [[ ${actual%% *} == "$expected" ]] || die '发行版 SHA-256 校验失败，未更新'
+    bash -n "$temporary/cachyos-setup.sh"
+    version=$(bash "$temporary/cachyos-setup.sh" --version)
+    [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die '发行版版本号无效'
+    if cmp -s -- "$temporary/cachyos-setup.sh" "$target"; then
+        printf '当前已是最新发行版（v%s）。\n' "$APP_VERSION"; return
+    fi
+    printf '\n当前 v%s → 最新 v%s\n将替换：%s\n仅更新脚本，不应用系统配置。\n' "$APP_VERSION" "$version" "$target"
+    if ! confirm '确认更新？'; then printf '已取消更新。\n'; return; fi
+    check_path "$target"
+    [[ $(sha256sum -- "$target") == "$original" ]] || die '脚本在检查后发生变化，未更新'
+    atomic_install "$temporary/cachyos-setup.sh" "$target" "$(stat -c %a -- "$target")"
+    printf '已更新至 v%s。请重新运行 bash %q。\n' "$version" "$target"
+)
+
 update_repository() {
+    if [[ -n ${CACHYOS_SETUP_SCRIPT:-} ]]; then update_release; return; fi
     need git
     local top branch upstream remote current candidate version path
-    top=$(git -C "$APP_ROOT" rev-parse --show-toplevel 2>/dev/null) || die '仅支持 Git 克隆仓库更新；归档安装请重新下载脚本包'
+    top=$(git -C "$APP_ROOT" rev-parse --show-toplevel 2>/dev/null) || die '源码副本需要通过 Git 克隆更新；也可下载发行版单文件脚本'
     [[ "$top" == "$APP_ROOT" ]] || die '脚本不在 Git 仓库根目录'
     remote=$(git -C "$APP_ROOT" config --get remote.origin.url) || die '缺少 origin'
     case "$remote" in

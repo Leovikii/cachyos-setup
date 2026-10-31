@@ -8,17 +8,19 @@
 
 ## 使用
 
-需要 Git。以桌面普通用户运行，**不要 sudo 整个脚本**：
+以桌面普通用户下载并运行最新版，**不要 sudo 整个脚本**：
 
 ```bash
-git clone https://github.com/Leovikii/cachyos-setup.git && cd cachyos-setup && bash setup.sh
+curl -fL https://github.com/Leovikii/cachyos-setup/releases/latest/download/cachyos-setup.sh -o cachyos-setup.sh && bash cachyos-setup.sh
 ```
 
-每项功能先展示修改内容，确认后执行。菜单提供状态检查、配置恢复和脚本更新；缺少软件时安装可能包含系统升级。
+或使用 wget：
 
-已有仓库直接运行 `bash setup.sh`。命令行用法见 `bash setup.sh --help`。
+```bash
+wget https://github.com/Leovikii/cachyos-setup/releases/latest/download/cachyos-setup.sh -O cachyos-setup.sh && bash cachyos-setup.sh
+```
 
-也可从 [Releases](https://github.com/Leovikii/cachyos-setup/releases) 下载脚本包，解压后运行 `bash setup.sh`；归档副本不支持 Git 自更新。
+每项功能先展示修改内容，确认后执行。菜单提供状态检查、配置恢复和脚本更新；缺少软件时安装可能包含系统升级。再次运行使用 `bash cachyos-setup.sh`，命令行用法见 `bash cachyos-setup.sh --help`。
 
 游戏预设需匹配所用 Proton 和游戏；默认 117 FPS。应用后按提示重启 Steam 或注销重登。
 

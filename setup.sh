@@ -39,13 +39,13 @@ run_module() (
 
 usage() {
     cat <<'EOF'
-用法：bash setup.sh [操作]
+用法：bash cachyos-setup.sh [操作]（源码仓库使用 bash setup.sh）
   无参数                  打开菜单
   --status [模块]         只读检查配置
   --preview 模块 [选项]   预览修改，不写入
   --apply 模块 [选项]     预览并确认后应用
   --restore               预览并确认后恢复最近的用户配置备份
-  --update                检查 Git 更新，确认后更新代码
+  --update                检查脚本更新，确认后更新代码
   --version / --help
 模块：kde fonts proton controller login-screen
 字体选项：--size 9..18 --rgba none|rgb|bgr|vrgb|vbgr
