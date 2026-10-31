@@ -21,8 +21,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Install test dependencies
-        run: pacman -Syu --noconfirm --needed git python fontconfig kconfig desktop-file-utils sudo shellcheck
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        run: pacman -Syu --noconfirm --needed git python fontconfig kconfig desktop-file-utils sudo shellcheck diffutils
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Check as an unprivileged user
         run: |
           useradd --create-home --shell /bin/bash tester
@@ -36,7 +36,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
       - name: Build and publish from this commit
