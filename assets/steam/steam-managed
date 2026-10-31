@@ -1,0 +1,7 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-3.0-only
+# Managed by cachyos-setup
+set -eu
+. "${XDG_DATA_HOME:-$HOME/.local/share}/cachyos-setup/environment.sh"
+steam_load_environment
+exec /usr/bin/steam "$@"
