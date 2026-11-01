@@ -72,7 +72,9 @@
 
 2026-11-01，v0.2.0 在 Arch 容器中以普通用户通过 Shell 语法、ShellCheck 及全部 46 项测试，无跳过。新增 10 项测试覆盖安装跳过测速及单文件发行版，使用临时 Live 文件和 sudo/进程命令替身，包含取消、幂等、架构变量、备份恢复、符号链接、权限、提权后复查和部分写入失败；没有执行真实磁盘安装，完整 Live ISO 安装仍需实机验证。
 
-v0.2.0 错误要求 `bootmnt` 必须存在，测试又人为创建了该目录，遗漏了实际 Live 启动布局。用户反馈的 2026.08.09 ISO 使用 `copytoram=auto`，`ID=cachyos`，存在 `/run/archiso/airootfs`，却没有 `/run/archiso/bootmnt`，因此被误判为“不适用”。此外，[上游 ISO 配置中的 `ID=arch` 和 `NAME=CachyOS`](https://github.com/CachyOS/CachyOS-Live-ISO/blob/master/archiso/airootfs/etc/os-release)也需要兼容。v0.2.1 的安装及单文件发行版测试采用用户实机身份与无 bootmnt 的布局，并另测上游身份、其它 Arch Live、不可读标识及不执行 os-release；Live 标记与[官方欢迎程序配置](https://github.com/CachyOS/CachyOS-Welcome/blob/master/data/preferences.json)一致。
+原 v0.2.0 错误要求 `bootmnt` 必须存在，测试又人为创建了该目录，遗漏了实际 Live 启动布局。用户反馈的 2026.08.09 ISO 使用 `copytoram=auto`，`ID=cachyos`，存在 `/run/archiso/airootfs`，却没有 `/run/archiso/bootmnt`，因此被误判为“不适用”。此外，[上游 ISO 配置中的 `ID=arch` 和 `NAME=CachyOS`](https://github.com/CachyOS/CachyOS-Live-ISO/blob/master/archiso/airootfs/etc/os-release)也需要兼容。修复后的安装及单文件发行版测试采用用户实机身份与无 bootmnt 的布局，并另测上游身份、其它 Arch Live、不可读标识及不执行 os-release；Live 标记与[官方欢迎程序配置](https://github.com/CachyOS/CachyOS-Welcome/blob/master/data/preferences.json)一致。
+
+2026-11-01 用户明确要求修复后删除原 v0.2.0 再次发布，因此本次保留 `VERSION=0.2.0`，在修复检查通过后删除旧 Release 和旧标签，再由 Actions 从修复提交重建并重新发布；这是用户授权的同版本重发例外，不更改一般发布规则。
 
 ## 版本更新
 
