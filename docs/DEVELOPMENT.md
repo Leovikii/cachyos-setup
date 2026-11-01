@@ -70,6 +70,8 @@
 
 核对依据：[安装器测速入口](https://github.com/CachyOS/cachyos-calamares/blob/cachyos/src/scripts/update-mirrorlist)、[镜像列表复制流程](https://github.com/CachyOS/cachyos-calamares/blob/cachyos/src/modules/shellprocess/shellprocess_initialize_pacman.conf)、[Live ISO 启动器](https://github.com/CachyOS/CachyOS-Live-ISO/blob/master/archiso/airootfs/usr/local/bin/calamares-online.sh)、[官方镜像列表](https://github.com/CachyOS/CachyOS-PKGBUILDS/blob/master/cachyos-mirrorlist/cachyos-mirrorlist)及其 [v3/v4 打包替换规则](https://github.com/CachyOS/CachyOS-PKGBUILDS/blob/master/cachyos-mirrorlist/PKGBUILD)。上游流程改变时重新核对，不通过宽松匹配强行兼容。
 
+2026-11-01，v0.2.0 在 Arch 容器中以普通用户通过 Shell 语法、ShellCheck 及全部 46 项测试，无跳过。新增 10 项测试覆盖安装跳过测速及单文件发行版，使用临时 Live 文件和 sudo/进程命令替身，包含取消、幂等、架构变量、备份恢复、符号链接、权限、提权后复查和部分写入失败；没有执行真实磁盘安装，完整 Live ISO 安装仍需实机验证。
+
 ## 版本更新
 
 只在用户选择更新时联网。单文件发行版使用 curl 或 wget 下载 latest Release 脚本及 `SHA256SUMS`，校验摘要、Shell 语法和版本后预览替换路径；用户确认后原子替换当前脚本，保留文件权限，不应用系统配置。校验失败、下载失败、符号链接或检查后本地脚本变化时停止。`CACHYOS_SETUP_SCRIPT` 由发行脚本启动入口传给内部模块，用于定位原文件。
