@@ -10,11 +10,14 @@ sudo pacman -Sy --noconfirm --needed cachyos-rate-mirrors rate-mirrors
 sudo cachyos-rate-mirrors
 '''
 
+# CachyOS/CachyOS-Live-ISO: archiso/airootfs/etc/os-release (official Live identity).
+LIVE_OS_RELEASE = 'NAME="CachyOS"\nPRETTY_NAME="CachyOS"\nID=arch\nBUILD_ID=rolling\n'
+
 
 def redirect_installer_paths(repo):
     module = repo / "modules/install-mirrors.sh"
     module.write_text(module.read_text().replace("INSTALL_ETC=/etc", 'INSTALL_ETC="$HOME/live/etc"')
-                      .replace("INSTALL_LIVE=/run/archiso/bootmnt", 'INSTALL_LIVE="$HOME/live/bootmnt"')
+                      .replace("INSTALL_LIVE=/run/archiso", 'INSTALL_LIVE="$HOME/live/archiso"')
                       .replace("INSTALL_PACMAN_LOCK=/var/lib/pacman/db.lck", 'INSTALL_PACMAN_LOCK="$HOME/live/db.lck"'))
 
 
@@ -23,8 +26,8 @@ class InstallMirrorsTest(Fixture):
         super().setUp()
         redirect_installer_paths(self.repo)
         self.live = self.home / "live"
-        (self.live / "bootmnt").mkdir(parents=True)
-        self.write(self.live / "etc/os-release", 'ID="cachyos"\n')
+        (self.live / "archiso").mkdir(parents=True)
+        self.write(self.live / "etc/os-release", LIVE_OS_RELEASE)
         self.mirrors = [self.live / "etc/pacman.d" / name for name in
                         ("mirrorlist", "cachyos-mirrorlist", "cachyos-v3-mirrorlist", "cachyos-v4-mirrorlist")]
         for path in self.mirrors:
@@ -54,6 +57,40 @@ class InstallMirrorsTest(Fixture):
             self.run_setup("--apply", "install-mirrors", answer=answer)
         result = self.run_setup(answer="3\n2\nn\n0\n0\n")
         self.assertIn("安装跳过测速", result.stdout)
+        self.assert_unchanged()
+
+    def test_official_live_identity_without_bootmnt_is_supported(self):
+        self.assertFalse((self.live / "archiso/bootmnt").exists())
+        self.assertIn("未配置", self.run_setup("--status", "install-mirrors").stdout)
+        self.run_setup("--apply", "install-mirrors", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "install-mirrors").stdout)
+
+    def test_identity_variants_and_other_arch_live_images(self):
+        release = self.live / "etc/os-release"
+        for identity in (LIVE_OS_RELEASE, 'ID=cachyos\n', 'ID="cachyos"\n',
+                         "ID='cachyos'\n", "ID='arch'\nNAME='CachyOS'\n",
+                         'ID="arch"\nNAME="CachyOS Linux"\n'):
+            with self.subTest(identity=identity):
+                release.write_text(identity)
+                self.assertIn("未配置", self.run_setup("--status", "install-mirrors").stdout)
+                self.run_setup("--preview", "install-mirrors")
+        for identity in ('ID=arch\nNAME="Arch Linux"\n', 'ID=other\nNAME="CachyOS"\n',
+                         'ID_LIKE=arch\nNAME="CachyOS"\n'):
+            with self.subTest(identity=identity):
+                release.write_text(identity)
+                self.assertIn("不适用", self.run_setup("--status", "install-mirrors").stdout)
+                self.run_setup("--apply", "install-mirrors", answer="y\n", ok=False)
+        self.assert_unchanged()
+
+    def test_unreadable_identity_is_reported_without_executing_it(self):
+        release = self.live / "etc/os-release"
+        release.chmod(0)
+        self.assertIn("无法检查", self.run_setup("--status", "install-mirrors").stdout)
+        self.run_setup("--apply", "install-mirrors", answer="y\n", ok=False)
+        release.chmod(0o644)
+        release.write_text(LIVE_OS_RELEASE + 'IGNORED=$(touch "$HOME/executed-os-release")\n')
+        self.run_setup("--preview", "install-mirrors")
+        self.assertFalse((self.home / "executed-os-release").exists())
         self.assert_unchanged()
 
     def test_apply_skips_ranking_preserves_variables_and_is_idempotent(self):
@@ -92,10 +129,10 @@ class InstallMirrorsTest(Fixture):
 
     def test_installed_system_wrong_distro_missing_files_and_options_are_rejected(self):
         self.run_setup("--preview", "install-mirrors", "--unknown", ok=False)
-        (self.live / "bootmnt").rmdir()
+        (self.live / "archiso").rmdir()
         self.assertIn("不适用", self.run_setup("--status", "install-mirrors").stdout)
         self.run_setup("--apply", "install-mirrors", answer="y\n", ok=False)
-        (self.live / "bootmnt").mkdir()
+        (self.live / "archiso").mkdir()
         (self.live / "etc/os-release").write_text("ID=arch\n")
         self.run_setup("--apply", "install-mirrors", answer="y\n", ok=False)
         (self.live / "etc/os-release").write_text("ID=cachyos\n")

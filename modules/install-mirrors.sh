@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: GPL-3.0-only
 INSTALL_ETC=/etc
-INSTALL_LIVE=/run/archiso/bootmnt
+INSTALL_LIVE=/run/archiso
 INSTALL_PACMAN_LOCK=/var/lib/pacman/db.lck
 
 install_paths() {
@@ -15,7 +15,13 @@ install_paths
 feature_options() { (($# == 0)) || die '安装跳过测速不接受额外参数'; }
 
 install_live() {
-    [[ -d "$INSTALL_LIVE" ]] && grep -Eq '^ID=(cachyos|"cachyos")$' "$INSTALL_ETC/os-release"
+    [[ -d "$INSTALL_LIVE" ]] || return 1
+    # 官方 Live ISO 使用 ID=arch；发行版身份同时参考 NAME，不执行 os-release。
+    awk -F= '
+        $1 == "ID" { id=$2; gsub(/^["\047]|["\047]$/, "", id) }
+        $1 == "NAME" { name=$2; gsub(/^["\047]|["\047]$/, "", name) }
+        END { exit !(id == "cachyos" || (id == "arch" && (name == "CachyOS" || name == "CachyOS Linux"))) }
+    ' "$INSTALL_ETC/os-release"
 }
 
 install_content() {
@@ -58,7 +64,9 @@ install_ready() {
 }
 
 feature_status() {
-    if ! install_live 2>/dev/null; then printf '不适用（仅限 CachyOS Live ISO）\n'; return; fi
+    if [[ ! -d "$INSTALL_LIVE" ]]; then printf '不适用（未检测到 Live 环境）\n'; return; fi
+    if [[ ! -r "$INSTALL_ETC/os-release" ]]; then printf '无法检查（系统标识不可读）\n'; return; fi
+    if ! install_live 2>/dev/null; then printf '不适用（未识别为 CachyOS）\n'; return; fi
     if ! (install_validate) 2>/dev/null; then printf '无法检查（安装文件缺失、不可读或结构不支持）\n'; return; fi
     if install_ready; then printf '配置就绪（安装跳过测速，使用官方 CDN）\n'
     elif cmp -s -- <(install_content 4) "$INSTALL_SCRIPT"; then printf '配置不完整（测速已跳过，镜像列表有变化）\n'

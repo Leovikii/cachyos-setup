@@ -4,7 +4,7 @@ import shutil
 import subprocess
 
 from test_setup import Fixture, ROOT
-from test_install_mirrors import ORIGINAL_SCRIPT, redirect_installer_paths
+from test_install_mirrors import LIVE_OS_RELEASE, ORIGINAL_SCRIPT, redirect_installer_paths
 
 
 class PackageTest(Fixture):
@@ -61,8 +61,8 @@ class PackageTest(Fixture):
     def test_standalone_installer_apply_status_and_skip_ranking(self):
         redirect_installer_paths(self.repo)
         live = self.home / "live"
-        (live / "bootmnt").mkdir(parents=True)
-        self.write(live / "etc/os-release", "ID=cachyos\n")
+        (live / "archiso").mkdir(parents=True)
+        self.write(live / "etc/os-release", LIVE_OS_RELEASE)
         for name in ("mirrorlist", "cachyos-mirrorlist", "cachyos-v3-mirrorlist", "cachyos-v4-mirrorlist"):
             self.write(live / "etc/pacman.d" / name, "original\n")
         target = live / "etc/calamares/scripts/update-mirrorlist"

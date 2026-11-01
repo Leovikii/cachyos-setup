@@ -62,7 +62,7 @@
 
 ## 安装跳过测速
 
-`install-mirrors` 仅适用于 `/run/archiso/bootmnt` 存在且 `os-release` 的 ID 为 CachyOS 的 Live ISO。只接受已核对的上游 `update-mirrorlist` 命令结构或本模块生成的完整脚本，未知结构、缺失/不可读文件、符号链接均停止。状态检查只读、不提权、不联网；以五个文件的实际内容判断就绪。
+`install-mirrors` 使用官方欢迎程序同样采用的 `/run/archiso` 作为 Live 环境标记，不要求其 `bootmnt` 子目录。只读解析 `os-release` 的 ID 和 NAME，不执行文件：接受 `ID=cachyos`，或官方 Live ISO 使用的 `ID=arch` 配合 `NAME=CachyOS` / `CachyOS Linux`；普通 Arch Live 不被接受。系统标识不可读显示“无法检查”。只接受已核对的上游 `update-mirrorlist` 命令结构或本模块生成的完整脚本，未知结构、缺失/不可读文件、符号链接均停止。状态检查只读、不提权、不联网；以五个文件的实际内容判断就绪。
 
 先从欢迎界面打开安装器，停在配置页面，再应用本功能。上游 `calamares-online.sh` 会重装 Calamares，故不能在欢迎界面启动流程之前应用，也不要在应用后重新从欢迎界面启动。预览及提权后均检查 Calamares 进程和 pacman 锁；用户必须在真正安装开始前操作，不能仅凭进程存在或没有 pacman 锁断定安装尚未开始。
 
@@ -71,6 +71,8 @@
 核对依据：[安装器测速入口](https://github.com/CachyOS/cachyos-calamares/blob/cachyos/src/scripts/update-mirrorlist)、[镜像列表复制流程](https://github.com/CachyOS/cachyos-calamares/blob/cachyos/src/modules/shellprocess/shellprocess_initialize_pacman.conf)、[Live ISO 启动器](https://github.com/CachyOS/CachyOS-Live-ISO/blob/master/archiso/airootfs/usr/local/bin/calamares-online.sh)、[官方镜像列表](https://github.com/CachyOS/CachyOS-PKGBUILDS/blob/master/cachyos-mirrorlist/cachyos-mirrorlist)及其 [v3/v4 打包替换规则](https://github.com/CachyOS/CachyOS-PKGBUILDS/blob/master/cachyos-mirrorlist/PKGBUILD)。上游流程改变时重新核对，不通过宽松匹配强行兼容。
 
 2026-11-01，v0.2.0 在 Arch 容器中以普通用户通过 Shell 语法、ShellCheck 及全部 46 项测试，无跳过。新增 10 项测试覆盖安装跳过测速及单文件发行版，使用临时 Live 文件和 sudo/进程命令替身，包含取消、幂等、架构变量、备份恢复、符号链接、权限、提权后复查和部分写入失败；没有执行真实磁盘安装，完整 Live ISO 安装仍需实机验证。
+
+v0.2.0 的测试错误地使用 `ID=cachyos` 模拟 Live 环境，遗漏了[官方 ISO 实际采用的 `ID=arch` 和 `NAME=CachyOS`](https://github.com/CachyOS/CachyOS-Live-ISO/blob/master/archiso/airootfs/etc/os-release)，造成 Live CD 被误判为“不适用”。v0.2.1 改为使用官方身份构造安装及单文件发行版测试，另覆盖无 bootmnt、身份变体、其它 Arch Live、不可读标识及不执行 os-release 的回归；Live 标记与[官方欢迎程序配置](https://github.com/CachyOS/CachyOS-Welcome/blob/master/data/preferences.json)一致。
 
 ## 版本更新
 
