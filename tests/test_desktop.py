@@ -173,6 +173,17 @@ touch "$HOME/dependencies-installed"
         self.assertFalse((self.home / "dependencies-installed").exists())
         self.assertEqual(len(self.backups()), 2)
 
+    def test_qt_tool_outside_path_is_used_without_installing_extra_packages(self):
+        self.missing_commands("qtpaths6")
+        fallback = self.home / "qtpaths"
+        fallback.write_text('#!/bin/bash\nprintf "%s\\n" "$HOME/plugins"\n')
+        fallback.chmod(0o755)
+        module = self.repo / "modules/kde.sh"
+        module.write_text(module.read_text().replace('/usr/lib/qt6/bin/qtpaths6', '"$HOME/qtpaths"'))
+        self.run_setup("--apply", "kde", answer="y\n")
+        self.assertFalse((self.home / "dependencies-installed").exists())
+        self.assertIn("配置就绪", self.run_setup("--status", "kde").stdout)
+
     def test_existing_aur_build_tools_are_not_reinstalled(self):
         (self.home / "plugins/org.kde.kdecoration3/org.kde.klassy.so").unlink()
         self.stub("pacman", '''

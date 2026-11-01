@@ -10,10 +10,12 @@ dependency_packages() {
                        touch:coreutils tr:coreutils)
     case "$MODULE" in
         kde)
+            detect_plugins
             if ! { command -v kreadconfig6 >/dev/null && kde_ready; }; then
-                commands+=(kreadconfig6:kconfig kwriteconfig6:kconfig qtpaths6:qt6-base qdbus6:qt6-tools
+                commands+=(kreadconfig6:kconfig kwriteconfig6:kconfig qdbus6:qt6-tools
                             plasma-apply-colorscheme:plasma-workspace plasma-apply-desktoptheme:plasma-workspace
                             plasma-apply-cursortheme:plasma-workspace)
+                if [[ -z "$PLUGIN_ROOT" ]]; then commands+=(qtpaths6:qt6-base); fi
             fi ;;
         fonts)
             if ! { fonts_available && fonts_ready; }; then
