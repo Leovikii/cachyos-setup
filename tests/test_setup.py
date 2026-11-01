@@ -21,6 +21,7 @@ class Fixture(unittest.TestCase):
             shutil.copytree(ROOT / name, self.repo / name)
         for name in ("setup.sh", "VERSION"):
             shutil.copy2(ROOT / name, self.repo / name)
+        self.version = (self.repo / "VERSION").read_text().strip()
         self.home = self.base / "test home"
         self.home.mkdir()
         self.bin = self.base / "bin"
@@ -83,7 +84,7 @@ class SetupTest(Fixture):
             self.assertFalse(self.state.exists())
 
     def test_version_help_and_invalid_arguments(self):
-        self.assertEqual(self.run_setup("--version").stdout.strip(), "0.1.0")
+        self.assertEqual(self.run_setup("--version").stdout.strip(), self.version)
         self.assertIn("--apply", self.run_setup("--help").stdout)
         for args in (("--apply",), ("--apply", "invalid"), ("--migrate",), ("--apply", "migration"), ("--status", "fonts", "extra"),
                      ("--apply", "proton", "--fps", "0"), ("--apply", "fonts", "--size", "20"),

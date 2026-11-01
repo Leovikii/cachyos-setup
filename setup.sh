@@ -8,11 +8,12 @@ source "$APP_ROOT/lib/common.sh"
 source "$APP_ROOT/lib/menu.sh"
 source "$APP_ROOT/lib/update.sh"
 
-valid_module() { case "$1" in kde|fonts|proton|controller|login-screen) return 0 ;; *) return 1 ;; esac; }
+valid_module() { case "$1" in kde|fonts|proton|controller|login-screen|install-mirrors) return 0 ;; *) return 1 ;; esac; }
 module_label() {
     case "$1" in
         kde) printf 'KDE 外观' ;; fonts) printf '字体设置' ;; proton) printf 'Proton 全局预设' ;;
         controller) printf '黑武士 5 Pro → Xbox 360' ;; login-screen) printf '登录界面仅显示主屏' ;;
+        install-mirrors) printf '安装跳过测速' ;;
     esac
 }
 
@@ -47,11 +48,12 @@ usage() {
   --restore               预览并确认后恢复最近的用户配置备份
   --update                检查脚本更新，确认后更新代码
   --version / --help
-模块：kde fonts proton controller login-screen
+模块：kde fonts proton controller login-screen install-mirrors
 字体选项：--size 9..18 --rgba none|rgb|bgr|vrgb|vbgr
 Proton 选项：--fps N --cache-size 12G --anti-lag-layer --no-anti-lag-layer
              --dx12-lowlatency --no-dx12-lowlatency --fsr-indicator --no-fsr-indicator
 登录单屏选项：--primary DP-1
+安装跳过测速：仅限 Live ISO；先从欢迎界面打开安装器，停留在配置页面后应用。
 所有应用操作均需交互确认，不支持无人值守跳过确认。
 EOF
 }
@@ -65,7 +67,7 @@ main() {
         --status)
             (($# <= 2)) || die '状态检查只接受一个模块'
             if (($# == 2)); then valid_module "$2" || die '未知模块'; run_module "$2" status;
-            else for module in kde fonts proton controller login-screen; do printf '%s：' "$(module_label "$module")"; run_module "$module" status; done; fi ;;
+            else for module in kde fonts proton controller login-screen install-mirrors; do printf '%s：' "$(module_label "$module")"; run_module "$module" status; done; fi ;;
         --preview|--apply)
             (($# >= 2)) || die '缺少模块，请使用 --help'
             module=$2; valid_module "$module" || die "未知模块：$module"

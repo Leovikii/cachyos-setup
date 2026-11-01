@@ -13,6 +13,7 @@
 | 游戏设置 | Proton 全局预设 | 用户级 Wayland、DXVK 低延迟、VRR 帧节奏、117 FPS、12G Mesa 缓存、可选 Anti-Lag 层 |
 | 游戏设置 | 黑武士 5 Pro → Xbox 360 | SDL 对 `37d7:2401` 的分类覆盖；可在未连接时应用 |
 | 系统微调 | 登录界面仅显示主屏 | 仅支持 Plasma Login Manager + KWin Wayland |
+| 系统微调 | 安装跳过测速 | 仅 CachyOS Live ISO；跳过 Calamares 测速，固定 CachyOS CDN77 和官方 Arch CDN |
 
 不迁移 USB 唤醒/WOL，不做自动硬件调优、游戏效果判定、动态插件框架或无人值守执行。
 
@@ -23,7 +24,7 @@
 - `lib/menu.sh`：主菜单、二级菜单、状态与恢复。
 - `lib/update.sh`：Git 克隆仓库的检查与确认更新。
 - `lib/fontconfig.py`：只读解析 Fontconfig XML，比较配置内容而非排版与注释。
-- `modules/`：`kde.sh`、`fonts.sh`、`proton.sh`、`controller.sh`、`login-screen.sh`，另用 `gaming.sh` 共享游戏参数逻辑。
+- `modules/`：`kde.sh`、`fonts.sh`、`proton.sh`、`controller.sh`、`login-screen.sh`、`install-mirrors.sh`，另用 `gaming.sh` 共享游戏参数逻辑。
 - `assets/kde/`：固定配色与许可证；`assets/steam/`：共享环境解析器、运行时启动器。
 - `tests/`：临时 HOME、假命令和独立 Git 仓库测试。
 - `scripts/package.sh`：从指定提交生成自包含的 `cachyos-setup.sh`，以明文 heredoc 嵌入模块、资源与许可证；运行时写入私有临时目录，退出清理，不下载运行依赖文件。
@@ -56,6 +57,18 @@
 用户级配置统一备份到 `${XDG_STATE_HOME:-~/.local/state}/cachyos-setup/backups/`，记录模块、版本和原文件不存在的情况。每次只应用一个模块，备份本次涉及的文件；恢复需预览并确认，明确整文件恢复可能覆盖后续改动。拒绝写入符号链接路径或未知归属的游戏入口。
 
 登录管理器文件由内部 sudo 写入，备份保留在登录账户配置目录，并输出恢复命令；第一版不将特权备份纳入用户级自动恢复，菜单明确说明。
+
+安装跳过测速同样使用内部 sudo，在 `/etc/pacman.d/cachyos-setup-install-backup.*` 中备份全部五个文件，保留原权限和归属，输出逐文件恢复命令，不纳入用户配置自动恢复。Live ISO 重启后修改和备份均不保留；镜像列表经安装器复制到目标系统后会保留。
+
+## 安装跳过测速
+
+`install-mirrors` 仅适用于 `/run/archiso/bootmnt` 存在且 `os-release` 的 ID 为 CachyOS 的 Live ISO。只接受已核对的上游 `update-mirrorlist` 命令结构或本模块生成的完整脚本，未知结构、缺失/不可读文件、符号链接均停止。状态检查只读、不提权、不联网；以五个文件的实际内容判断就绪。
+
+先从欢迎界面打开安装器，停在配置页面，再应用本功能。上游 `calamares-online.sh` 会重装 Calamares，故不能在欢迎界面启动流程之前应用，也不要在应用后重新从欢迎界面启动。预览及提权后均检查 Calamares 进程和 pacman 锁；用户必须在真正安装开始前操作，不能仅凭进程存在或没有 pacman 锁断定安装尚未开始。
+
+跳过 `/etc/calamares/scripts/update-mirrorlist` 的联网安装及测速，以成功返回的脚本替换，保留其余安装流程。四份镜像列表只包含一个 Server：CachyOS 使用 `https://cdn77.cachyos.org/repo/$arch/$repo`，v3/v4 分别保留 `$arch_v3`/`$arch_v4`；Arch 使用 `https://archlinux.cachyos.org/repo/$repo/os/$arch`。CDN77 是全球 CDN，不保证美国节点。不测速、不做连通性探测，不卸载测速软件或修改安装后定时器；不可达时由用户恢复或手动换源。
+
+核对依据：[安装器测速入口](https://github.com/CachyOS/cachyos-calamares/blob/cachyos/src/scripts/update-mirrorlist)、[镜像列表复制流程](https://github.com/CachyOS/cachyos-calamares/blob/cachyos/src/modules/shellprocess/shellprocess_initialize_pacman.conf)、[Live ISO 启动器](https://github.com/CachyOS/CachyOS-Live-ISO/blob/master/archiso/airootfs/usr/local/bin/calamares-online.sh)、[官方镜像列表](https://github.com/CachyOS/CachyOS-PKGBUILDS/blob/master/cachyos-mirrorlist/cachyos-mirrorlist)及其 [v3/v4 打包替换规则](https://github.com/CachyOS/CachyOS-PKGBUILDS/blob/master/cachyos-mirrorlist/PKGBUILD)。上游流程改变时重新核对，不通过宽松匹配强行兼容。
 
 ## 版本更新
 

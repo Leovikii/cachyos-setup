@@ -44,7 +44,7 @@ status_menu() {
     local answer
     while true; do
         heading '状态与恢复'
-        printf '  1  检查所有配置\n  2  恢复最近的用户配置备份\n\n  登录界面：按应用时输出的 sudo 命令恢复。\n  整文件恢复会覆盖备份之后的修改。\n\n  0  返回\n\n'
+        printf '  1  检查所有配置\n  2  恢复最近的用户配置备份\n\n  登录界面、安装跳过测速：按应用时输出的 sudo 命令恢复。\n  整文件恢复会覆盖备份之后的修改。\n\n  0  返回\n\n'
         IFS= read -r -p '  选择 › ' answer || return 0
         case "$answer" in
             1) menu_action main --status ;;
@@ -64,7 +64,7 @@ main_menu() {
         case "$answer" in
             1) category_menu '桌面美化' kde fonts ;;
             2) category_menu '游戏设置' proton controller ;;
-            3) category_menu '系统微调' login-screen ;;
+            3) category_menu '系统微调' login-screen install-mirrors ;;
             8) menu_action update_repository; return ;;
             9) status_menu ;;
             0) return ;;

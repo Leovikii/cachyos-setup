@@ -64,7 +64,7 @@ update_repository() {
     git -C "$APP_ROOT" merge-base --is-ancestor "$current" "$candidate" || die '本地提交领先或分支已分叉，未更新，请手动处理'
     version=$(git -C "$APP_ROOT" show "$candidate:VERSION")
     [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die '远端 VERSION 格式无效'
-    for path in setup.sh lib/common.sh lib/menu.sh lib/update.sh lib/fontconfig.py modules/kde.sh modules/fonts.sh modules/gaming.sh modules/proton.sh modules/controller.sh modules/login-screen.sh assets/steam/environment.sh assets/steam/steam-managed assets/kde/CatppuccinMochaPink.colors; do
+    for path in setup.sh lib/common.sh lib/menu.sh lib/update.sh lib/fontconfig.py modules/kde.sh modules/fonts.sh modules/gaming.sh modules/proton.sh modules/controller.sh modules/login-screen.sh modules/install-mirrors.sh assets/steam/environment.sh assets/steam/steam-managed assets/kde/CatppuccinMochaPink.colors; do
         [[ $(git -C "$APP_ROOT" cat-file -t "$candidate:$path") == blob ]] || die "远端缺少必要文件：$path"
     done
     printf '\n当前 v%s → 远端 v%s（%s）\n' "$APP_VERSION" "$version" "${candidate:0:8}"

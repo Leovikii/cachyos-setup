@@ -79,6 +79,7 @@ restore_latest() {
     IFS= read -r module < "$directory/module"
     valid_module "$module" || die "此备份不受当前版本支持，原始文件仍保留在：$directory"
     [[ "$module" != login-screen ]] || die '登录界面备份需按应用时输出的命令恢复'
+    [[ "$module" != install-mirrors ]] || die '安装跳过测速备份需按应用时输出的 sudo 命令恢复'
     # 仅接受当前模块声明的目标路径，不执行备份中的代码或任意路径。
     MODULE=$module
     source "$APP_ROOT/modules/$module.sh"

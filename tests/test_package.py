@@ -4,6 +4,7 @@ import shutil
 import subprocess
 
 from test_setup import Fixture, ROOT
+from test_install_mirrors import ORIGINAL_SCRIPT, redirect_installer_paths
 
 
 class PackageTest(Fixture):
@@ -50,12 +51,30 @@ class PackageTest(Fixture):
         temporary = self.base / "runtime temporary"
         temporary.mkdir()
         self.env["TMPDIR"] = str(temporary)
-        self.assertEqual(self.run_bundle(script, "--version").stdout.strip(), "0.1.0")
+        self.assertEqual(self.run_bundle(script, "--version").stdout.strip(), self.version)
         self.assertIn("--apply", self.run_bundle(script, "--help").stdout)
         self.run_bundle(script, "--apply", "controller", answer="n\n")
         self.run_bundle(script, "--invalid", ok=False)
         self.assertFalse(self.state.exists())
         self.assertEqual(list(temporary.iterdir()), [])
+
+    def test_standalone_installer_apply_status_and_skip_ranking(self):
+        redirect_installer_paths(self.repo)
+        live = self.home / "live"
+        (live / "bootmnt").mkdir(parents=True)
+        self.write(live / "etc/os-release", "ID=cachyos\n")
+        for name in ("mirrorlist", "cachyos-mirrorlist", "cachyos-v3-mirrorlist", "cachyos-v4-mirrorlist"):
+            self.write(live / "etc/pacman.d" / name, "original\n")
+        target = live / "etc/calamares/scripts/update-mirrorlist"
+        self.write(target, ORIGINAL_SCRIPT)
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pgrep", '[[ "$*" == "-x calamares" ]]')
+        self.commit()
+        script = self.build()
+        shutil.rmtree(self.repo)
+        self.run_bundle(script, "--apply", "install-mirrors", answer="y\n")
+        self.assertIn("配置就绪", self.run_bundle(script, "--status", "install-mirrors").stdout)
+        subprocess.run(["bash", str(target)], env=self.env, capture_output=True, check=True)
 
     def test_standalone_apply_status_idempotency_and_restore(self):
         self.commit()
