@@ -24,6 +24,8 @@ install_live() {
     ' "$INSTALL_ETC/os-release"
 }
 
+feature_applicable() { install_live; }
+
 install_content() {
     case "$1" in
         0) printf '%s\n' 'Server = https://archlinux.cachyos.org/repo/$repo/os/$arch' ;;
@@ -75,7 +77,8 @@ feature_status() {
 
 feature_preview() {
     install_validate
-    install_preflight
+    if command -v pgrep >/dev/null; then install_preflight;
+    else printf '缺少进程检测工具：自动安装后复查安装器状态，再应用配置。\n'; fi
     printf '\n安装跳过测速\n'
     printf '范围：当前 Live ISO 的 Calamares 安装流程；请停留在安装器配置页面，不要开始安装。\n'
     printf '跳过 update-mirrorlist 测速；四份镜像列表仅保留以下官方 CDN：\n'
@@ -83,7 +86,7 @@ feature_preview() {
     printf '  Arch：archlinux.cachyos.org\n'
     printf '将通过内部 sudo 修改以下文件：\n'; show_targets
     printf '应用前备份全部文件并输出 sudo 恢复命令；整文件恢复会覆盖后续修改。\n'
-    printf '不安装软件、不测速、不联网探测；CDN 不可达时需恢复或手动换源。\n'
+    printf '不测速、不做 CDN 联网探测；缺少执行依赖时自动安装。CDN 不可达时需恢复或手动换源。\n'
     printf '应用后直接继续当前安装器；重新从欢迎界面启动会覆盖测速脚本，需再次应用。\n'
     printf '镜像列表会随安装流程复制到目标系统；不修改安装后系统的测速定时器。\n'
     printf 'Live ISO 重启后本次修改及备份会丢失。\n'

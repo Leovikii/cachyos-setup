@@ -48,7 +48,6 @@ check_owned() {
 check_gaming_paths() {
     local path
     for path in "${TARGETS[@]}"; do check_owned "$path"; done
-    [[ -f "$DESKTOP_SOURCE" ]] || die "找不到原生 Steam 入口：$DESKTOP_SOURCE（第一版不支持 Flatpak）"
     [[ "$CONFIG_VALID" == true ]] || die '游戏参数配置无效，请先修正后重试'
 }
 
@@ -127,10 +126,10 @@ refresh_user_environment() {
 }
 
 preview_gaming() {
-    need python3
     check_gaming_paths
     steam_config_lines <(print_config) >/dev/null || die '游戏参数不合法'
-    render_desktop >/dev/null
+    if [[ -f "$DESKTOP_SOURCE" ]] && command -v python3 >/dev/null; then render_desktop >/dev/null; fi
+    if [[ ! -f "$DESKTOP_SOURCE" ]]; then printf '确认后自动安装原生 Steam（Flatpak 版不提供此入口）。\n'; fi
     printf '范围：当前用户会话全局，供 Steam 及其它继承环境的程序读取。\n'
     printf '配置参数：\n'; print_config
     printf '\n将创建或更新以下文件，应用前备份：\n'; show_targets
@@ -164,6 +163,7 @@ install_gaming_stage() {
 
 apply_gaming() {
     check_gaming_paths
+    [[ -f "$DESKTOP_SOURCE" ]] || die "安装后仍找不到原生 Steam 入口：$DESKTOP_SOURCE"
     stage_gaming
     local path index=0 changed=false
     for path in "${GAMING_TARGETS[@]}"; do

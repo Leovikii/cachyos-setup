@@ -54,6 +54,25 @@ class Fixture(unittest.TestCase):
         path.write_text("#!/bin/bash\nset -e\n" + body + "\n")
         path.chmod(0o755)
 
+    def missing_commands(self, *names):
+        """Hide discovery and reject execution until the fake package install succeeds."""
+        self.hidden_commands = sorted(set(getattr(self, "hidden_commands", ())) | set(names))
+        common = self.repo / "lib/common.sh"
+        common.write_text(common.read_text() + '''
+command() {
+    if [[ "$1" == -v && ! -e "$HOME/dependencies-installed" ]]; then
+        case "$2" in ''' + "|".join(self.hidden_commands) + ''') return 1 ;; esac
+    fi
+    builtin command "$@"
+}
+''')
+        for name in names:
+            real = shutil.which(name)
+            if real:
+                import shlex
+                self.stub(name, '[[ -e "$HOME/dependencies-installed" ]] || exit 96\n'
+                          + 'exec ' + shlex.quote(real) + ' "$@"')
+
     def run_setup(self, *args, answer="", ok=True):
         result = subprocess.run(["bash", str(self.repo / "setup.sh"), *args], env=self.env,
                                 text=True, input=answer, capture_output=True)

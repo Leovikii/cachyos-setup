@@ -11,7 +11,7 @@ output=$(cd -- "$output" && pwd)
 temporary=$(mktemp -d)
 trap 'rm -rf -- "$temporary"' EXIT
 git archive "$revision" | tar -x -C "$temporary"
-for path in VERSION LICENSE setup.sh lib/common.sh lib/menu.sh lib/update.sh lib/fontconfig.py modules/kde.sh modules/fonts.sh modules/proton.sh modules/controller.sh modules/gaming.sh modules/login-screen.sh modules/install-mirrors.sh assets/kde/LICENSE.catppuccin assets/kde/CatppuccinMochaPink.colors assets/steam/environment.sh assets/steam/steam-managed; do
+for path in VERSION LICENSE setup.sh lib/common.sh lib/dependencies.sh lib/menu.sh lib/update.sh lib/fontconfig.py modules/kde.sh modules/fonts.sh modules/proton.sh modules/controller.sh modules/gaming.sh modules/login-screen.sh modules/install-mirrors.sh assets/kde/LICENSE.catppuccin assets/kde/CatppuccinMochaPink.colors assets/steam/environment.sh assets/steam/steam-managed; do
     [[ -f "$temporary/$path" ]] || { printf '缺少运行文件：%s\n' "$path" >&2; exit 1; }
 done
 python3 - "$temporary" "$output/cachyos-setup.sh" <<'PY'

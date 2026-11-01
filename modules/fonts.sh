@@ -15,9 +15,14 @@ validate_options() {
 
 install_fonts() {
     need pacman; need sudo; need fc-cache
+    local package
+    local -a flags=(--needed)
+    for package in ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji; do
+        if pacman -Q "$package" >/dev/null 2>&1; then flags=(); break; fi
+    done
     printf '将更新系统并安装官方字体包；pacman 会显示清单并询问确认。\n'
     # Arch 不支持局部升级；不使用 -Sy，也不需要 AUR helper。
-    sudo pacman -Syu --needed ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji
+    sudo pacman -Syu "${flags[@]}" ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji
     fc-cache -f
     printf '字体安装完成。\n'
 }
@@ -151,6 +156,7 @@ fonts_available() {
 }
 
 fonts_ready() {
+    command -v python3 >/dev/null || return 1
     [[ -f "$CONFIG_FILE" ]] && python3 "$APP_ROOT/lib/fontconfig.py" check "$CONFIG_FILE" <(print_config) || return 1
     [[ "${XDG_CURRENT_DESKTOP:-}" == *KDE* ]] || return 0
     command -v kreadconfig6 >/dev/null || return 1
@@ -179,13 +185,12 @@ feature_status() {
 
 feature_preview() {
     local target
-    need python3
     for target in "${TARGETS[@]}"; do check_path "$target"; done
     printf '\n字体设置 · 更纱 UI/Term SC / Noto CJK / Emoji\n'
     printf '字号：%spt；次像素渲染：%s（none 为灰度抗锯齿）。\n' "$FONT_SIZE" "$RGBA"
     printf '将修改（kdeglobals 仅在 KDE 下修改）：\n'; show_targets
     if ! fonts_available; then
-        printf '需安装字体：ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji。\n更纱完整包较大；pacman -Syu 包含完整系统升级，并保留确认。\n'
+        printf '自动安装字体：ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji；包已安装但字体不可用时重新安装。\n更纱完整包较大；pacman -Syu 包含完整系统升级，并保留确认。\n'
     fi
     printf '应用前备份完整文件；保留已有 fonts.conf、DPI 和桌面缩放。应用后请注销重登。\n'
     if fonts_available && fonts_ready; then printf '当前配置已符合预设，执行时将跳过。\n'; fi

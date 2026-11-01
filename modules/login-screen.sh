@@ -15,7 +15,6 @@ feature_options() {
 }
 
 login_paths() {
-    need python3
     local manager account
     manager=$(readlink -f /etc/systemd/system/display-manager.service) || die '未找到登录管理器服务'
     [[ "${manager##*/}" == plasmalogin.service ]] || die '仅支持 Plasma Login Manager，不支持 SDDM/X11'
@@ -25,6 +24,12 @@ login_paths() {
     LOGIN_SOURCE="$CONFIG_HOME/kwinoutputconfig.json"
     LOGIN_TARGET="$LOGIN_HOME/.config/kwinoutputconfig.json"
     [[ -f "$LOGIN_SOURCE" ]] || die "找不到 $LOGIN_SOURCE；请先在 KDE 显示设置中保存布局"
+}
+
+feature_applicable() {
+    local manager
+    manager=$(readlink -f /etc/systemd/system/display-manager.service) || return 1
+    [[ "${manager##*/}" == plasmalogin.service ]]
 }
 
 login_generate() {
@@ -103,7 +108,8 @@ feature_status() {
 
 feature_preview() {
     login_paths
-    GENERATED=$(login_generate)
+    if command -v python3 >/dev/null; then GENERATED=$(login_generate);
+    else printf '缺少 Python：自动安装后校验显示布局，再写入配置。\n'; fi
     printf '\n登录界面仅显示主屏\n'
     printf '读取：%s\n写入：%s（内部 sudo）\n' "$LOGIN_SOURCE" "$LOGIN_TARGET"
     printf '将主屏移到 (0,0)，关闭同一布局的其它屏幕；主屏缺席的历史布局保留。\n'
@@ -113,6 +119,8 @@ feature_preview() {
 
 feature_apply() {
     need sudo
+    login_paths
+    GENERATED=$(login_generate)
     local generated
     generated=$(mktemp)
     trap 'rm -f -- "${LOGIN_TEMP:-}"' EXIT

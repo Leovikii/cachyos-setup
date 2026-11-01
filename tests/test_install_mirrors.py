@@ -48,6 +48,24 @@ class InstallMirrorsTest(Fixture):
     def snapshots(self):
         return list((self.live / "etc/pacman.d").glob("cachyos-setup-install-backup.*"))
 
+    def test_system_install_all_skips_unsupported_login_and_applies_live_feature(self):
+        self.stub("readlink", 'echo /usr/lib/systemd/system/sddm.service')
+        result = self.run_setup("--apply-all", "system", answer="y\n")
+        self.assertIn("跳过不适用项：登录界面", result.stdout)
+        self.assertIn("配置就绪", self.run_setup("--status", "install-mirrors").stdout)
+
+    def test_missing_process_tool_is_installed_then_preflight_is_rechecked(self):
+        self.missing_commands("pgrep")
+        self.stub("pacman", '''
+[[ "$*" == '-Syu --needed procps-ng' ]] || exit 97
+touch "$HOME/dependencies-installed"
+''')
+        self.stub("pgrep", '[[ -e "$HOME/dependencies-installed" && "$*" == "-x calamares" ]]')
+        self.run_setup("--apply", "install-mirrors", answer="n\n")
+        self.assert_unchanged()
+        self.run_setup("--apply", "install-mirrors", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "install-mirrors").stdout)
+
     def assert_unchanged(self):
         self.assertEqual([(p.read_bytes(), p.stat().st_mode & 0o777) for p in self.targets], self.originals)
         self.assertFalse(self.snapshots())

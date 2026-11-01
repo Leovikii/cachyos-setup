@@ -79,7 +79,7 @@ EOF
 install_components() {
     need pacman
     local part package helper='' candidate
-    local -a repo=() aur=()
+    local -a repo=() aur=() repo_flags=(--needed) aur_flags=(--needed)
     for part in "${COMPONENTS[@]}"; do
         [[ "$part" != colors ]] || continue
         if has_component "$part"; then printf '跳过已有组件：%s\n' "$part"; continue; fi
@@ -91,7 +91,9 @@ install_components() {
         esac
         if pacman -Q "$package" >/dev/null 2>&1 ||
             { [[ "$part" == bibata ]] && pacman -Q bibata-cursor-theme-bin >/dev/null 2>&1; }; then
-            die "$package 已安装但所需文件不可用；请检查文件完整性和 Klassy/KDecoration ABI，修复或重编译后重试"
+            printf '%s 已安装但组件不可用，将重新安装仓库包或重新构建 AUR 包。\n' "$package"
+            repo_flags=()
+            aur_flags=(--rebuild)
         fi
         if pacman -Si "$package" >/dev/null 2>&1; then
             repo+=("$package")
@@ -103,21 +105,26 @@ install_components() {
             esac
         fi
     done
-    # 在任何包安装前检查所需 helper，避免执行到一半才发现无法继续。
+    # CachyOS 仓库提供 paru；AUR 构建始终由当前普通用户执行。
     if ((${#aur[@]})); then
         for candidate in paru yay; do
             if command -v "$candidate" >/dev/null 2>&1; then helper=$candidate; break; fi
         done
-        [[ -n "$helper" ]] || die "缺少 paru/yay；请先自行安装 AUR 包：${aur[*]}"
+        if [[ -z "$helper" ]]; then
+            repo+=(paru)
+            helper=paru
+        fi
+        repo+=(base-devel git)
     fi
     if ((${#repo[@]})); then
         need sudo
         printf '安装缺少的仓库包并完整升级系统：%s\n' "${repo[*]}"
-        sudo pacman -Syu --needed "${repo[@]}"
+        sudo pacman -Syu "${repo_flags[@]}" "${repo[@]}"
     fi
     if ((${#aur[@]})); then
+        need "$helper"
         printf '通过 %s 安装缺少的 AUR 包并升级；请审阅 PKGBUILD：%s\n' "$helper" "${aur[*]}"
-        "$helper" -Syu --needed "${aur[@]}"
+        "$helper" -Syu "${aur_flags[@]}" "${aur[@]}"
     fi
     if has_component colors; then
         printf '跳过已有配色：%s\n' "$SCHEME"
@@ -142,9 +149,13 @@ write_setting() {
 }
 
 check_session() {
-    [[ "${XDG_CURRENT_DESKTOP:-}" == *KDE* && "${KDE_SESSION_VERSION:-}" == 6 && "${XDG_SESSION_TYPE:-}" == wayland ]] ||
+    feature_applicable ||
         die '请在 Plasma 6 Wayland 会话的终端内应用'
     need qdbus6
+}
+
+feature_applicable() {
+    [[ "${XDG_CURRENT_DESKTOP:-}" == *KDE* && "${KDE_SESSION_VERSION:-}" == 6 && "${XDG_SESSION_TYPE:-}" == wayland ]]
 }
 
 apply_config() {
@@ -224,6 +235,7 @@ feature_status() {
 
 feature_preview() {
     local target part missing=false
+    feature_applicable || die '请在 Plasma 6 Wayland 会话的终端内应用'
     for target in "${TARGETS[@]}"; do check_path "$target"; done
     printf '\nKDE 外观 · Breeze / Klassy / Mocha Pink / Papirus-Dark / Bibata\n'
     printf '范围：当前用户的 Plasma 6 Wayland 桌面；保留布局、字体、缩放和光标尺寸。\n'
@@ -233,7 +245,8 @@ feature_preview() {
         if ! has_component "$part"; then printf ' %s' "$part"; missing=true; fi
     done
     if ! "$missing"; then printf ' 无'; fi
-    printf '\n缺失组件通过 pacman 或已有 paru/yay 安装，可能包含完整系统/AUR 升级；会保留安装确认。\n'
+    printf '\n缺失组件通过 pacman 或 paru/yay 自动安装；需要 AUR 时自动安装 paru（无现有 helper 时）、base-devel 和 git。\n包含完整系统/AUR 升级，保留包管理器确认和 PKGBUILD 审阅。\n'
+    printf '已安装但所需文件或 ABI 不可用时，自动重新安装或构建；组件校验通过后才应用外观。\n'
     printf '应用前保存完整文件快照；整文件恢复会覆盖后续修改。建议应用后注销重登。\n'
     if command -v kreadconfig6 >/dev/null && kde_ready; then printf '当前配置已符合预设，执行时将跳过。\n'; fi
 }

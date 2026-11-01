@@ -20,7 +20,9 @@ curl -fL https://github.com/Leovikii/cachyos-setup/releases/latest/download/cach
 wget https://github.com/Leovikii/cachyos-setup/releases/latest/download/cachyos-setup.sh -O cachyos-setup.sh && bash cachyos-setup.sh
 ```
 
-每项功能先展示修改内容，确认后执行。菜单提供状态检查、配置恢复和脚本更新；缺少软件时安装可能包含系统升级。再次运行使用 `bash cachyos-setup.sh`，命令行用法见 `bash cachyos-setup.sh --help`。
+每项功能先展示修改内容，确认后自动安装所需依赖并应用配置。三个功能分类内均有“安装全部”，一次确认后顺序执行适用项，遇错停止。不适用项会注明并跳过；软件安装包含完整系统升级，保留包管理器确认。菜单还提供状态检查、配置恢复和脚本更新。
+
+再次运行使用 `bash cachyos-setup.sh`，命令行用法见 `bash cachyos-setup.sh --help`。
 
 游戏预设需匹配所用 Proton 和游戏；默认 117 FPS。应用后按提示重启 Steam 或注销重登。
 

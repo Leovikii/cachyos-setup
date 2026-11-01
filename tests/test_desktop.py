@@ -53,6 +53,42 @@ kwriteconfig6 --file "$XDG_CONFIG_HOME/kcminputrc" --group Mouse --key cursorSiz
         self.run_setup("--apply", "kde", answer="y\n", ok=False)
         self.assertFalse((self.config / "kdeglobals").exists())
 
+    def test_kde_reinstalls_installed_but_unavailable_decoration(self):
+        (self.home / "plugins/org.kde.kdecoration3/org.kde.klassy.so").unlink()
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pacman", '''
+case "$1" in
+    -Q|-Si) [[ "$2" == klassy ]] ;;
+    -Syu)
+        [[ "$*" == '-Syu klassy' ]]
+        touch "$HOME/plugins/org.kde.kdecoration3/org.kde.klassy.so"
+        printf '%s\\n' "$*" >> "$HOME/packages" ;;
+    *) exit 97 ;;
+esac
+''')
+        self.run_setup("--apply", "kde", answer="y\n")
+        self.assertEqual((self.home / "packages").read_text(), "-Syu klassy\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "kde").stdout)
+
+    def test_kde_rebuilds_installed_aur_decoration_against_current_abi(self):
+        (self.home / "plugins/org.kde.kdecoration3/org.kde.klassy.so").unlink()
+        self.write(self.home / "plugins/org.kde.kdecoration2/org.kde.klassy.so", "old ABI")
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pacman", '''
+case "$1" in
+    -Q) [[ "$2" == klassy ]] ;;
+    -Si) exit 1 ;;
+    -Syu) [[ "$*" == '-Syu base-devel git' ]] ;;
+    *) exit 97 ;;
+esac
+''')
+        self.stub("paru", '''
+[[ "$*" == '-Syu --rebuild klassy' ]]
+touch "$HOME/plugins/org.kde.kdecoration3/org.kde.klassy.so"
+''')
+        self.run_setup("--apply", "kde", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "kde").stdout)
+
     def test_kde_installs_missing_repo_components_only_once(self):
         (self.home / "plugins/org.kde.kdecoration3/org.kde.klassy.so").unlink()
         (self.data / "icons/Papirus-Dark/index.theme").unlink()
@@ -75,7 +111,8 @@ esac
 
     def test_kde_uses_existing_aur_helper_when_repo_package_is_missing(self):
         (self.home / "plugins/org.kde.kdecoration3/org.kde.klassy.so").unlink()
-        self.stub("pacman", "exit 1")
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pacman", '[[ "$*" == "-Syu --needed base-devel git" ]]')
         self.stub("paru", '''
 printf 'paru %s\\n' "$*" >> "$HOME/actions"
 [[ "$*" == '-Syu --needed klassy' ]] || exit 97
@@ -84,6 +121,50 @@ touch "$HOME/plugins/org.kde.kdecoration3/org.kde.klassy.so"
         self.run_setup("--apply", "kde", answer="y\n")
         self.assertIn("配置就绪", self.run_setup("--status", "kde").stdout)
         self.assertIn("paru -Syu --needed klassy", (self.home / "actions").read_text())
+
+    def test_missing_aur_helper_and_build_dependencies_are_installed_automatically(self):
+        (self.home / "plugins/org.kde.kdecoration3/org.kde.klassy.so").unlink()
+        self.missing_commands("paru", "yay")
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pacman", '''
+[[ "$*" == '-Syu --needed paru base-devel git' ]] || exit 1
+printf '%s\\n' "$*" >> "$HOME/packages"
+touch "$HOME/dependencies-installed"
+''')
+        self.stub("paru", '''
+[[ -e "$HOME/dependencies-installed" && "$*" == '-Syu --needed klassy' ]]
+touch "$HOME/plugins/org.kde.kdecoration3/org.kde.klassy.so"
+''')
+        self.run_setup("--apply", "kde", answer="n\n")
+        self.assertFalse((self.home / "packages").exists())
+        self.run_setup("--apply", "kde", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "kde").stdout)
+
+    def test_missing_font_tools_are_installed_before_reading_and_preserve_settings(self):
+        self.run_setup("--apply", "fonts", "--size", "13", "--rgba", "bgr", answer="y\n")
+        self.missing_commands("python3", "kwriteconfig6")
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pacman", '''
+[[ "$*" == '-Syu --needed python kconfig' ]] || exit 97
+touch "$HOME/dependencies-installed"
+''')
+        self.run_setup("--apply", "fonts", answer="y\n")
+        self.assertIn("配置就绪（13pt / bgr）", self.run_setup("--status", "fonts").stdout)
+
+    def test_desktop_install_all_applies_kde_and_fonts(self):
+        self.run_setup("--apply-all", "desktop", answer="y\n")
+        for module in ("kde", "fonts"):
+            self.assertIn("配置就绪", self.run_setup("--status", module).stdout)
+
+    def test_kde_installs_missing_qt_tools_before_applying(self):
+        self.missing_commands("kwriteconfig6", "qdbus6")
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pacman", '''
+[[ "$*" == '-Syu --needed kconfig qt6-tools' ]] || exit 97
+touch "$HOME/dependencies-installed"
+''')
+        self.run_setup("--apply", "kde", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "kde").stdout)
 
     def test_kde_apply_failure_keeps_recoverable_snapshot(self):
         self.write(self.config / "kdeglobals", "[General]\nColorScheme=Before\n")
@@ -130,6 +211,20 @@ touch "$HOME/fonts-installed"
         self.assertIn("配置就绪", self.run_setup("--status", "fonts").stdout)
         self.run_setup("--apply", "fonts", answer="y\n")
         self.assertEqual((self.home / "actions").read_text().count("pacman -Syu"), 1)
+
+    def test_fonts_reinstall_when_package_exists_but_font_families_are_missing(self):
+        self.stub("fc-list", '''
+[[ -e "$HOME/fonts-reinstalled" ]] || exit 0
+printf '%s\\n' 'Sarasa UI SC' 'Sarasa Term SC' 'Noto Serif CJK SC' 'Noto Color Emoji'
+''')
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pacman", '''
+if [[ "$1" == -Q ]]; then exit 0; fi
+[[ "$*" == '-Syu ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji' ]]
+touch "$HOME/fonts-reinstalled"
+''')
+        self.run_setup("--apply", "fonts", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "fonts").stdout)
 
     def test_font_formatting_comments_and_redundant_rules_are_equivalent(self):
         self.run_setup("--apply", "fonts", "--size", "12", "--rgba", "rgb", answer="y\n")
@@ -232,3 +327,14 @@ class LoginTest(Fixture):
         self.target.symlink_to(outside)
         self.run_setup("--apply", "login-screen", answer="y\n", ok=False)
         self.assertEqual(outside.read_text(), "keep")
+
+    def test_login_installs_missing_python_before_generating_layout(self):
+        self.missing_commands("python3")
+        self.stub("pacman", '''
+[[ "$*" == '-Syu --needed python' ]] || exit 97
+touch "$HOME/dependencies-installed"
+''')
+        self.run_setup("--apply", "login-screen", answer="n\n")
+        self.assertFalse(self.target.exists())
+        self.run_setup("--apply", "login-screen", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "login-screen").stdout)

@@ -28,10 +28,11 @@ category_menu() {
             if ! status=$(run_module "$module" status 2>/dev/null); then status='无法检查'; fi
             printf '  %s  %s\n     %s\n' "$((index+1))" "$(module_label "$module")" "$status"
         done
-        printf '\n  0  返回\n\n'
+        printf '\n  9  安装全部\n  0  返回\n\n'
         IFS= read -r -p '  选择 › ' answer || return 0
         case "$answer" in
             0) return ;;
+            9) menu_action apply_all "${modules[@]}" ;;
             1|2)
                 if ((answer <= ${#modules[@]})); then menu_action run_module "${modules[answer-1]}" apply;
                 else printf '  无效选择。\n'; fi ;;
