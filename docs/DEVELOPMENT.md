@@ -72,7 +72,7 @@
 
 2026-11-01，v0.2.0 在 Arch 容器中以普通用户通过 Shell 语法、ShellCheck 及全部 46 项测试，无跳过。新增 10 项测试覆盖安装跳过测速及单文件发行版，使用临时 Live 文件和 sudo/进程命令替身，包含取消、幂等、架构变量、备份恢复、符号链接、权限、提权后复查和部分写入失败；没有执行真实磁盘安装，完整 Live ISO 安装仍需实机验证。
 
-v0.2.0 的测试错误地使用 `ID=cachyos` 模拟 Live 环境，遗漏了[官方 ISO 实际采用的 `ID=arch` 和 `NAME=CachyOS`](https://github.com/CachyOS/CachyOS-Live-ISO/blob/master/archiso/airootfs/etc/os-release)，造成 Live CD 被误判为“不适用”。v0.2.1 改为使用官方身份构造安装及单文件发行版测试，另覆盖无 bootmnt、身份变体、其它 Arch Live、不可读标识及不执行 os-release 的回归；Live 标记与[官方欢迎程序配置](https://github.com/CachyOS/CachyOS-Welcome/blob/master/data/preferences.json)一致。
+v0.2.0 错误要求 `bootmnt` 必须存在，测试又人为创建了该目录，遗漏了实际 Live 启动布局。用户反馈的 2026.08.09 ISO 使用 `copytoram=auto`，`ID=cachyos`，存在 `/run/archiso/airootfs`，却没有 `/run/archiso/bootmnt`，因此被误判为“不适用”。此外，[上游 ISO 配置中的 `ID=arch` 和 `NAME=CachyOS`](https://github.com/CachyOS/CachyOS-Live-ISO/blob/master/archiso/airootfs/etc/os-release)也需要兼容。v0.2.1 的安装及单文件发行版测试采用用户实机身份与无 bootmnt 的布局，并另测上游身份、其它 Arch Live、不可读标识及不执行 os-release；Live 标记与[官方欢迎程序配置](https://github.com/CachyOS/CachyOS-Welcome/blob/master/data/preferences.json)一致。
 
 ## 版本更新
 

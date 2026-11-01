@@ -12,6 +12,9 @@ sudo cachyos-rate-mirrors
 
 # CachyOS/CachyOS-Live-ISO: archiso/airootfs/etc/os-release (official Live identity).
 LIVE_OS_RELEASE = 'NAME="CachyOS"\nPRETTY_NAME="CachyOS"\nID=arch\nBUILD_ID=rolling\n'
+# User-reported 2026.08.09 ISO: copytoram=auto, archiso/airootfs present, no bootmnt.
+COPYTORAM_OS_RELEASE = ('NAME="CachyOS Linux"\nPRETTY_NAME="CachyOS"\nID=cachyos\nID_LIKE=arch\n'
+                       'IMAGE_ID=cachyos\nIMAGE_VERSION=2026.08.09\n')
 
 
 def redirect_installer_paths(repo):
@@ -27,7 +30,7 @@ class InstallMirrorsTest(Fixture):
         redirect_installer_paths(self.repo)
         self.live = self.home / "live"
         (self.live / "archiso").mkdir(parents=True)
-        self.write(self.live / "etc/os-release", LIVE_OS_RELEASE)
+        self.write(self.live / "etc/os-release", COPYTORAM_OS_RELEASE)
         self.mirrors = [self.live / "etc/pacman.d" / name for name in
                         ("mirrorlist", "cachyos-mirrorlist", "cachyos-v3-mirrorlist", "cachyos-v4-mirrorlist")]
         for path in self.mirrors:
@@ -60,8 +63,17 @@ class InstallMirrorsTest(Fixture):
         self.assert_unchanged()
 
     def test_official_live_identity_without_bootmnt_is_supported(self):
+        (self.live / "etc/os-release").write_text(LIVE_OS_RELEASE)
         self.assertFalse((self.live / "archiso/bootmnt").exists())
         self.assertIn("未配置", self.run_setup("--status", "install-mirrors").stdout)
+        self.run_setup("--apply", "install-mirrors", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "install-mirrors").stdout)
+
+    def test_reported_copytoram_live_without_bootmnt_is_supported(self):
+        (self.live / "archiso/airootfs").mkdir()
+        self.assertFalse((self.live / "archiso/bootmnt").exists())
+        self.assertIn("未配置", self.run_setup("--status", "install-mirrors").stdout)
+        self.run_setup("--preview", "install-mirrors")
         self.run_setup("--apply", "install-mirrors", answer="y\n")
         self.assertIn("配置就绪", self.run_setup("--status", "install-mirrors").stdout)
 
