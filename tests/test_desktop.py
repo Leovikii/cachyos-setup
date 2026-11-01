@@ -166,6 +166,30 @@ touch "$HOME/dependencies-installed"
         self.run_setup("--apply", "kde", answer="y\n")
         self.assertIn("配置就绪", self.run_setup("--status", "kde").stdout)
 
+    def test_ready_desktop_does_not_install_unused_apply_tools(self):
+        self.run_setup("--apply-all", "desktop", answer="y\n")
+        self.missing_commands("kwriteconfig6", "qdbus6")
+        self.run_setup("--apply-all", "desktop", answer="y\n")
+        self.assertFalse((self.home / "dependencies-installed").exists())
+        self.assertEqual(len(self.backups()), 2)
+
+    def test_existing_aur_build_tools_are_not_reinstalled(self):
+        (self.home / "plugins/org.kde.kdecoration3/org.kde.klassy.so").unlink()
+        self.stub("pacman", '''
+case "$1" in
+    -Q) [[ "$2" == base-devel || "$2" == git ]] ;;
+    -Si) exit 1 ;;
+    *) printf 'unexpected install\\n' >> "$HOME/packages"; exit 97 ;;
+esac
+''')
+        self.stub("paru", '''
+[[ "$*" == '-Syu --needed klassy' ]]
+touch "$HOME/plugins/org.kde.kdecoration3/org.kde.klassy.so"
+''')
+        self.run_setup("--apply", "kde", answer="y\n")
+        self.assertFalse((self.home / "packages").exists())
+        self.assertIn("配置就绪", self.run_setup("--status", "kde").stdout)
+
     def test_kde_apply_failure_keeps_recoverable_snapshot(self):
         self.write(self.config / "kdeglobals", "[General]\nColorScheme=Before\n")
         self.stub("plasma-apply-colorscheme", "exit 29")
@@ -224,6 +248,22 @@ if [[ "$1" == -Q ]]; then exit 0; fi
 touch "$HOME/fonts-reinstalled"
 ''')
         self.run_setup("--apply", "fonts", answer="y\n")
+        self.assertIn("配置就绪", self.run_setup("--status", "fonts").stdout)
+
+    def test_fonts_install_only_the_missing_font_family_package(self):
+        self.stub("fc-list", '''
+printf '%s\\n' 'Sarasa UI SC' 'Sarasa Term SC' 'Noto Color Emoji'
+[[ ! -e "$HOME/cjk-installed" ]] || printf 'Noto Serif CJK SC\\n'
+''')
+        self.stub("sudo", 'exec "$@"')
+        self.stub("pacman", '''
+[[ "$1" != -Q ]] || exit 1
+[[ "$*" == '-Syu --needed noto-fonts-cjk' ]]
+printf '%s\\n' "$*" >> "$HOME/packages"
+touch "$HOME/cjk-installed"
+''')
+        self.run_setup("--apply", "fonts", answer="y\n")
+        self.assertEqual((self.home / "packages").read_text(), "-Syu --needed noto-fonts-cjk\n")
         self.assertIn("配置就绪", self.run_setup("--status", "fonts").stdout)
 
     def test_font_formatting_comments_and_redundant_rules_are_equivalent(self):

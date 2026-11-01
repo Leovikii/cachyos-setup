@@ -45,9 +45,11 @@
 
 每个功能分类菜单提供“安装全部”，CLI 对应 `--apply-all desktop|gaming|system`。先筛选会话、登录管理器或 Live 身份适用项并逐项预览；一次脚本确认后顺序执行，包管理器仍正常询问。各项保持独立备份，失败即停止，已完成项不自动回滚。配置损坏和未知文件不能作为“不适用”静默跳过。每项执行前重新读取共享配置，避免后执行模块覆盖先执行模块的设置。
 
-执行依赖映射使用 Arch/CachyOS 包名，包括 Python、KConfig、Qt 工具、Fontconfig、util-linux、diffutils 和 procps-ng；缺少原生 Steam 入口时自动安装 `steam`。没有 sudo 时使用 pkexec 或 su 安装 sudo，随后复查。KDE 的缺失主题优先从仓库安装；需要 AUR 时自动补齐 `base-devel`、`git`，无现有 paru/yay 时从 CachyOS 仓库安装 paru。AUR 构建在普通用户身份下执行并保留 PKGBUILD 审阅。
+执行依赖映射使用 Arch/CachyOS 包名，包括 Python、KConfig、Qt 工具、Fontconfig、util-linux、diffutils 和 procps-ng；缺少原生 Steam 入口时自动安装 `steam`。包安装优先使用 sudo，没有时使用已有 pkexec 或 su；仅特权配置写入功能需要自动补齐 sudo。KDE 的缺失主题优先从仓库安装；需要 AUR 时只补齐尚未安装的 `base-devel`、`git`，无现有 paru/yay 时从 CachyOS 仓库安装 paru。AUR 构建在普通用户身份下执行并保留 PKGBUILD 审阅。
 
 字体、窗口装饰、图标和光标本身也是脚本的安装对象。检测到包已安装但字体/组件不可用时，移除该次安装的 `--needed` 以允许重装；AUR 使用 `--rebuild` 重新构建。安装后仍严格检查字体族、主题文件和 KDecoration ABI，不在组件不可用时写入外观配置，也不以要求用户手动下载作为正常安装路径。
+
+安装范围保持克制：字体按更纱、Noto CJK、Emoji 各自的实际字体族分别判断，仅安装缺少的组；主题按组件文件判断，可用就跳过。桌面配置已经符合目标时，不补装本次不会用到的写入/应用工具；AUR 构建工具只在确实走 AUR 安装或重建时检查，不为其它功能预装。
 
 字体比较忽略 XML 排版、注释和属性顺序，接受追加的同值无条件渲染规则，保留对参数差异和额外冲突规则的检查；已有字体大小、rgba 不依靠脚本归属标记读取。登录账户私有文件无读取权限时仍显示“无法检查”，状态检测不自动提权。
 

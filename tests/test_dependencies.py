@@ -55,11 +55,11 @@ touch "$HOME/dependencies-installed"
         self.assertIn("配置就绪", self.run_setup("--status", "controller").stdout)
         self.assertNotIn("DXVK_FRAME_RATE", self.values())
 
-    def test_missing_sudo_is_bootstrapped_through_pkexec(self):
+    def test_missing_sudo_uses_pkexec_without_installing_unused_sudo(self):
         self.missing_commands("sudo")
         self.stub("pkexec", 'printf "pkexec\\n" >> "$HOME/bootstrap"; exec "$@"')
         self.stub("pacman", '''
-[[ "$*" == '-Syu --needed sudo python' ]] || exit 97
+[[ "$*" == '-Syu --needed python' ]] || exit 97
 touch "$HOME/dependencies-installed"
 ''')
         self.run_setup("--apply", "controller", answer="y\n")
@@ -70,6 +70,10 @@ touch "$HOME/dependencies-installed"
 class BatchTest(Fixture):
     def test_each_category_menu_has_install_all_with_one_confirmation(self):
         # Exercise real menu routing, replacing only module effects to isolate menu semantics.
+        (self.repo / "lib/dependencies.sh").write_text('''
+preview_dependencies() { :; }
+prepare_dependencies() { :; }
+''')
         for module in ("kde", "fonts", "proton", "controller", "login-screen", "install-mirrors"):
             (self.repo / "modules" / (module + ".sh")).write_text('''
 feature_options() { :; }
@@ -81,6 +85,7 @@ feature_apply() { printf '%s\\n' "$MODULE" >> "$HOME/applied"; }
                                 (3, "login-screen\ninstall-mirrors\n")):
             result = self.run_setup(answer=f"{index}\n9\ny\n0\n0\n")
             self.assertIn("安装全部", result.stdout)
+            self.assertTrue((self.home / "applied").exists(), result.stdout + result.stderr)
             self.assertEqual((self.home / "applied").read_text(), expected)
             (self.home / "applied").unlink()
 

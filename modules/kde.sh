@@ -114,12 +114,13 @@ install_components() {
             repo+=(paru)
             helper=paru
         fi
-        repo+=(base-devel git)
+        for package in base-devel git; do
+            if ! pacman -Q "$package" >/dev/null 2>&1; then repo+=("$package"); fi
+        done
     fi
     if ((${#repo[@]})); then
-        need sudo
         printf '安装缺少的仓库包并完整升级系统：%s\n' "${repo[*]}"
-        sudo pacman -Syu "${repo_flags[@]}" "${repo[@]}"
+        run_pacman -Syu "${repo_flags[@]}" "${repo[@]}"
     fi
     if ((${#aur[@]})); then
         need "$helper"
@@ -253,11 +254,11 @@ feature_preview() {
 
 feature_apply() {
     local target
-    check_session
     for target in "${TARGETS[@]}"; do check_path "$target"; done
+    if command -v kreadconfig6 >/dev/null && kde_ready; then printf '配置已符合目标，跳过。\n'; return; fi
+    check_session
     need kreadconfig6; need kwriteconfig6
     qdbus6 org.kde.KWin /KWin org.kde.KWin.supportInformation >/dev/null
-    if kde_ready; then printf '配置已符合目标，跳过。\n'; return; fi
     backup_files
     install_components
     apply_config

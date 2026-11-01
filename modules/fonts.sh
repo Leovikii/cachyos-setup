@@ -13,16 +13,24 @@ validate_options() {
     [[ "$FONT_SIZE" =~ ^(9|1[0-8])$ ]] || die '字号必须是 9..18 的整数'
 }
 
+font_packages() {
+    if ! { has_family "$UI_FONT" && has_family "$MONO_FONT"; }; then printf '%s\n' ttf-sarasa-gothic; fi
+    if ! has_family 'Noto Serif CJK SC'; then printf '%s\n' noto-fonts-cjk; fi
+    if ! has_family 'Noto Color Emoji'; then printf '%s\n' noto-fonts-emoji; fi
+}
+
 install_fonts() {
-    need pacman; need sudo; need fc-cache
+    need pacman; need fc-cache
     local package
-    local -a flags=(--needed)
-    for package in ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji; do
+    local -a flags=(--needed) packages=()
+    mapfile -t packages < <(font_packages)
+    ((${#packages[@]})) || return 0
+    for package in "${packages[@]}"; do
         if pacman -Q "$package" >/dev/null 2>&1; then flags=(); break; fi
     done
     printf '将更新系统并安装官方字体包；pacman 会显示清单并询问确认。\n'
     # Arch 不支持局部升级；不使用 -Sy，也不需要 AUR helper。
-    sudo pacman -Syu "${flags[@]}" ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji
+    run_pacman -Syu "${flags[@]}" "${packages[@]}"
     fc-cache -f
     printf '字体安装完成。\n'
 }
@@ -98,7 +106,7 @@ apply_config() {
     need fc-list; need fc-cache
     local family kde=false
     for family in "$UI_FONT" "$MONO_FONT" 'Noto Serif CJK SC' 'Noto Color Emoji'; do
-        has_family "$family" || die "缺少字体 $family，请确认应用以安装缺失字体"
+        has_family "$family" || die "安装后仍找不到字体 $family；未应用字体配置"
     done
     if [[ "${XDG_CURRENT_DESKTOP:-}" == *KDE* ]]; then need kwriteconfig6; kde=true; fi
 
@@ -190,7 +198,9 @@ feature_preview() {
     printf '字号：%spt；次像素渲染：%s（none 为灰度抗锯齿）。\n' "$FONT_SIZE" "$RGBA"
     printf '将修改（kdeglobals 仅在 KDE 下修改）：\n'; show_targets
     if ! fonts_available; then
-        printf '自动安装字体：ttf-sarasa-gothic noto-fonts-cjk noto-fonts-emoji；包已安装但字体不可用时重新安装。\n更纱完整包较大；pacman -Syu 包含完整系统升级，并保留确认。\n'
+        if command -v fc-list >/dev/null; then printf '自动安装缺少的字体包：%s\n' "$(font_packages | tr '\n' ' ')";
+        else printf '安装 Fontconfig 后检测实际字体族，仅安装缺少的字体包。\n'; fi
+        printf '包已安装但字体不可用时重新安装；更纱完整包较大。\npacman -Syu 包含完整系统升级，并保留确认。\n'
     fi
     printf '应用前备份完整文件；保留已有 fonts.conf、DPI 和桌面缩放。应用后请注销重登。\n'
     if fonts_available && fonts_ready; then printf '当前配置已符合预设，执行时将跳过。\n'; fi
@@ -202,6 +212,7 @@ feature_apply() {
     if fonts_available && fonts_ready; then printf '配置已符合目标，跳过。\n'; return; fi
     if [[ "${XDG_CURRENT_DESKTOP:-}" == *KDE* ]]; then need kwriteconfig6; fi
     if ! fonts_available; then install_fonts; fi
+    fonts_available || die '安装后字体仍不可用；未应用字体配置'
     backup_files
     apply_config
     fonts_ready || die '字体配置校验失败'

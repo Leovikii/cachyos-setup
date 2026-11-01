@@ -4,20 +4,25 @@
 dependency_packages() {
     local item tool package
     local -A seen=()
-    local -a commands=(sudo:sudo flock:util-linux cmp:diffutils awk:gawk grep:grep sed:sed
+    local -a commands=(flock:util-linux cmp:diffutils awk:gawk grep:grep sed:sed
                        cat:coreutils cp:coreutils mv:coreutils mkdir:coreutils dirname:coreutils
                        mktemp:coreutils chmod:coreutils stat:coreutils install:coreutils date:coreutils rm:coreutils
                        touch:coreutils tr:coreutils)
     case "$MODULE" in
-        kde) commands+=(kreadconfig6:kconfig kwriteconfig6:kconfig qtpaths6:qt6-base qdbus6:qt6-tools
-                        plasma-apply-colorscheme:plasma-workspace plasma-apply-desktoptheme:plasma-workspace
-                        plasma-apply-cursortheme:plasma-workspace) ;;
+        kde)
+            if ! { command -v kreadconfig6 >/dev/null && kde_ready; }; then
+                commands+=(kreadconfig6:kconfig kwriteconfig6:kconfig qtpaths6:qt6-base qdbus6:qt6-tools
+                            plasma-apply-colorscheme:plasma-workspace plasma-apply-desktoptheme:plasma-workspace
+                            plasma-apply-cursortheme:plasma-workspace)
+            fi ;;
         fonts)
-            commands+=(python3:python fc-list:fontconfig fc-cache:fontconfig)
-            if [[ ${XDG_CURRENT_DESKTOP:-} == *KDE* ]]; then commands+=(kreadconfig6:kconfig kwriteconfig6:kconfig); fi ;;
+            if ! { fonts_available && fonts_ready; }; then
+                commands+=(python3:python fc-list:fontconfig fc-cache:fontconfig)
+                if [[ ${XDG_CURRENT_DESKTOP:-} == *KDE* ]]; then commands+=(kreadconfig6:kconfig kwriteconfig6:kconfig); fi
+            fi ;;
         proton|controller) commands+=(python3:python) ;;
-        login-screen) commands+=(python3:python getent:glibc readlink:coreutils) ;;
-        install-mirrors) commands+=(pgrep:procps-ng) ;;
+        login-screen) commands+=(sudo:sudo python3:python getent:glibc readlink:coreutils) ;;
+        install-mirrors) commands+=(sudo:sudo pgrep:procps-ng) ;;
     esac
     for item in "${commands[@]}"; do
         tool=${item%%:*}; package=${item#*:}
@@ -28,18 +33,22 @@ dependency_packages() {
     if [[ "$MODULE" == proton || "$MODULE" == controller ]] && [[ ! -f "$DESKTOP_SOURCE" ]]; then printf 'steam\n'; fi
 }
 
-install_dependencies() {
-    (($#)) || return 0
+run_pacman() {
     need pacman
-    printf '自动安装缺少的依赖并完整升级系统：%s\n' "$*"
-    if command -v sudo >/dev/null; then sudo pacman -Syu --needed "$@"
-    elif command -v pkexec >/dev/null; then pkexec pacman -Syu --needed "$@"
+    if command -v sudo >/dev/null; then sudo pacman "$@"
+    elif command -v pkexec >/dev/null; then pkexec pacman "$@"
     else
         need su
         local command
-        printf -v command '%q ' pacman -Syu --needed "$@"
+        printf -v command '%q ' pacman "$@"
         su -c "$command"
     fi
+}
+
+install_dependencies() {
+    (($#)) || return 0
+    printf '自动安装缺少的依赖并完整升级系统：%s\n' "$*"
+    run_pacman -Syu --needed "$@"
 }
 
 preview_dependencies() {
